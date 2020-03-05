@@ -23,13 +23,13 @@ library(lubridate)
 
 
 ## Overview
-MovieLens.org is a movie rating website, created and maintained by the GroupLens research lab at the University of Minnesota. The website was launched in the last quarter of 1997 in response to the the shuttering of movie recommender EachMovie. Use of the site has grown steadily; there are now over five thousand monthly active users. [^1]  
+MovieLens.org is a movie rating website, created and maintained by the GroupLens research lab at the University of Minnesota. The website was launched in the last quarter of 1997 in response to the the shuttering of movie recommender EachMovie. Use of the site has grown steadily; there are now over five thousand monthly active users. ^1^  
 
-GroupLens uses MovieLens to run field experiments in recommendation and provides user, movie, and rating information in a number of datasets. The MovieLens datasets range up to 25 million lines long, and have been used widely in education and research since they were first made available in 1998.  The 10 million line MovieLens set was used in the analysis that follows. [^1]  
+GroupLens uses MovieLens to run field experiments in recommendation and provides user, movie, and rating information in a number of datasets. The MovieLens datasets range up to 25 million lines long, and have been used widely in education and research since they were first made available in 1998.  The 10 million line MovieLens set was used in the analysis that follows.^1^   
 
-The file contains exactly 10,000,054 lines, with each line representing a discrete rating of a movie by a user. The ratings range from zero to five, by half-unit increments, and were collected between January 1995 and January 2009. This spans the time MovieLens began allowing users to make half-unit ratings in February, 2003. These 10 million ratings represent 69,878 users ranking 95,580 movies. [^1]  
+The file contains exactly 10,000,054 lines, with each line representing a discrete rating of a movie by a user. The ratings range from zero to five, by half-unit increments, and were collected between January 1995 and January 2009. This spans the time MovieLens began allowing users to make half-unit ratings in February, 2003. These 10 million ratings represent 69,878 users ranking 95,580 movies.^1^  
 
-This analysis details the creation of an algorithm to predict ratings based on information in the MovieLens data. The success measure is a minimized root mean square error value. This choice of metric, rather than another measure like accuracy, provides some guidance in model development. The aim will be to come as close as possible to the actual rating in each case, rather than to maximize the number of times exactly the correct rating is produced.  
+This analysis details the creation of an algorithm to predict ratings based on information in the MovieLens data. The success measure is a minimized root mean square error value, a measure that more heavily penalizes error the larger it is. This choice of metric, rather than another measure like accuracy, provides some guidance in model development. The aim will be to come as close as possible to the actual rating in each case, rather than to maximize the number of times exactly the correct rating is produced.  
 
 The 10 million line dataset was split into three parts for the purposes of analysis: a validation data set with about one million lines, a test set for cross validation and tuning purposes about the same size, and a training set made up of the remaining eight million lines.  
 
@@ -37,11 +37,11 @@ Predictions were made beginning with the simplest algorithm, then slowly increas
 
 ## Methods
 
-Machine learning approaches can be broadly categorized into classification and regression techniques. Classification assigns an observation to one of several discrete groups, while regression predicts a continuous value. Regression approaches were focused on here, as higher-rated films should see commensurate increases in other metrics. Classification approaches would have the benefit of only assigning values that are actual MovieLens ratings, but would lose connections between movies that users considered better or worse. Regression methods can produce highly inaccurate data without rounding or further processing (a prediction of 3.128462 will never exactly match a rating of 3 or 3.5), but RMSE is not hampered.  
+Machine learning approaches can be broadly categorized into classification and regression techniques. Classification assigns an observation to one of several groups, while regression predicts a continuous value. Regression approaches were focused on here, as higher-rated films should see commensurate increases in other metrics. Classification approaches would have the benefit of only assigning values that are actual MovieLens ratings, but would lose connections between movies that users considered better or worse. Regression methods can produce highly inaccurate data without rounding or further processing (a prediction of 3.128462 will never exactly match a rating of 3 or 3.5), but RMSE is not hampered.  
 
-Recommendation generators can further be classified as memory or model-based. Any full-scale deployed algorithm will be based on a model exploiting similarities between observations. Clustering users or movies into cohorts to make predictions is the norm here, famously used in the Netflix challenge, where a similar approach was applied to win a cash prize from the streaming service. Memory-based approaches, in this case, using characteristics of a movie rating appended to its row in the table to predict rating, are easy to set up, but don’t scale up well.  
+Recommendation generators can regress based on features of individual observations or cohort observations into groups. Any full-scale deployed algorithm will be based on a model exploiting similarities between observations. Clustering users or movies into cohorts to make predictions is the norm here, famously used in the Netflix challenge, where a similar approach was applied to win a cash prize from the streaming service. Approaches like the one laid out here use characteristics of a movie rating appended to its row in the table to predict ratings. They are easy to set up, but don’t scale well.  
 
-We will begin with simple memory-based approaches. The basic setup and data cleaning code come from the HarvardX Introduction to Data Science course. The initial analysis approach follows the model set out in the course textbook, with elaboration. [^2]  
+We will begin with simple mean-based approaches. The basic setup and data cleaning code come from the HarvardX Introduction to Data Science course. The initial analysis approach follows the model set out in the course textbook, with elaboration.^2^   
 ```{r cleaning, echo=TRUE, cache=TRUE}
 dl <- tempfile()
 download.file("http://files.grouplens.org/datasets/movielens/ml-10m.zip", dl)
@@ -57,19 +57,15 @@ movies <- as.data.frame(movies) %>% mutate(movieId = as.numeric(levels(movieId))
 
 movielens <- left_join(ratings, movies, by = "movieId")
 
-# Validation set will be 10% of MovieLens data
 set.seed(1, sample.kind="Rounding")
-# if using R 3.5 or earlier, use `set.seed(1)` instead
 test_index <- createDataPartition(y = movielens$rating, times = 1, p = 0.1, list = FALSE)
 edx <- movielens[-test_index,]
 temp <- movielens[test_index,]
 
-# Make sure userId and movieId in validation set are also in edx set
 validation <- temp %>% 
   semi_join(edx, by = "movieId") %>%
   semi_join(edx, by = "userId")
 
-# Add rows removed from validation set back into edx set
 removed <- anti_join(temp, validation)
 edx <- rbind(edx, removed)
 
@@ -96,7 +92,7 @@ om
 ```
 The predictive power of this single value is:
 ```{r meanrmse, echo=TRUE, cache=FALSE}
-RMSE(mean(edx_train$rating),edx_train$rating)
+RMSE(om,edx_train$rating)
 ```
 ### User Means and Movie Means
 
@@ -208,7 +204,8 @@ Using the lubridate package to transform the timestamp into an easily interpreta
 ```{r timestamp, echo=TRUE, cache=TRUE}
 #slight correlations exist (about 0.5 and -.6) for the month and year of ratings
 #though only over a narrow range
-dates<-edx_train%>%select(timestamp,rating)%>%mutate(date=as_datetime(timestamp),ratyear=year(date),ratmonth=month(date))
+dates<-edx_train%>%select(timestamp,rating)%>%
+  mutate(date=as_datetime(timestamp),ratyear=year(date),ratmonth=month(date))
 
 ydate<-dates%>%group_by(ratyear)%>%summarize(rateyearmean=mean(rating))
 ydate[1,2]=om #replace earliest year, only 4 ratings, with overall mean
@@ -305,22 +302,15 @@ predictions_rffinal<-predict(train_rffinal,prep_test)
 testsetRMSE<-RMSE(predictions_rffinal,prep_test$rating)
 testsetRMSE
 
-#check on validation set
-predictions_validation<-predict(train_rffinal,prep_val)
-validationRMSE<-RMSE(predictions_validation,prep_val$rating)
-validationRMSE
 ```
 Other sampled models produced RMSE values over one. A simple linear model on the six predictors performed slightly better on the test set, with an RMSE of 0.879 on the test set and trained in only a few hours. 
 ```{r lm, eval=FALSE, echo=TRUE, cache=TRUE}
-train_lm <- train(rating ~ usermean+moviemean+genremean+yearmean+rateyearmean+ratemonthmean, method="lm",
+train_lm <- train(rating ~ usermean+moviemean+genremean+yearmean+rateyearmean+ratemonthmean,
+                  method="lm",
                   data = prep_train)
 predictions_lm<-predict(train_lm,prep_test)
 lmRMSE<-RMSE(predictions_lm,prep_test$rating)
 lmRMSE
-
-predictions_lmval<-predict(train_lm,prep_val)
-lmRMSEval<-RMSE(predictions_lmval,prep_val$rating)
-lmRMSEval
 ```
 The resulting linear model has the following coefficients.
 $prediction = 0.86340*usermean+0.89251*moviemean-0.00283*genremean-0.01099*yearmonthmean+0.07021*rateyearmean-0.36330*ratemonthmean-1.59650$  
@@ -328,19 +318,18 @@ $prediction = 0.86340*usermean+0.89251*moviemean-0.00283*genremean-0.01099*yearm
 10,000 line samples used to train decision trees verified the possible importance of age of a film and genre (particularly if "Drama" was listed).
 
 ## Results
-The best available model for the validation set is...
-```{r bestoverall, echo=TRUE, cache=TRUE}
-
-RMSE(prep_test$usermean+prep_test$moviemean-om,prep_val$rating)
-
-
+The best available model for the validation set is the linear model, yielding an RMSE value of 0.880 on the validation set.
+```{r bestoverall, eval=FALSE, echo=TRUE, cache=TRUE}
+predictions_lmval<-predict(train_lm,prep_val)
+lmRMSEval<-RMSE(predictions_lmval,prep_val$rating)
+lmRMSEval
 ```
 ## Conclusions
 The largest impacts on rating clearly came from the identity of users and movies. It would have been interesting to explore a cohorting approach that more explicitly predicted ratings on the basis of other similar users.  
 
 All other characteristics of these observations seem, at best, to add fractional bits of information to these major predictors.
 
-I would be very curious to see how low RMSE could be pushed with bagged or boosted algorithms able to train on the entire dataset. Implementations like SlopeOne could also be useful in predicting ratings for movies a given user has not seen.
+RMSE could be pushed lower with bagged or boosted algorithms able to train on the entire dataset. Implementations like SlopeOne could also be useful in predicting ratings for movies a given user has not seen.
 
 As far as additional data, MovieLens now includes social features. A user's friends and their ratings are an obvious source of additional information. Additionally, aggregates of critical consensus like RottenTomatoes or Metacritic might be a helpful addition. There may be an individual correlation, positive or negative depending on the user, between their personal rating and critical consensus.  
 

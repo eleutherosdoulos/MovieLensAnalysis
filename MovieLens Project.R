@@ -93,7 +93,7 @@ lc<-cvlm[1,which.min(cvlm[2,])]#col 1 val  with min of second column in cvlm
 mm<-edx_train%>%group_by(movieId)%>%summarize(moviemean=om+(sum(rating-om)/(n()+lc)))
 
 #train set genres average rating, based on previously regularized movie mean rating
-cvlg<-sapply(seq(1,20,1),function(x){lambdas(i=x,y=edx_train,p=10,z="genres")})
+cvlg<-sapply(seq(1,20,1),function(x){lambdas(i=x,y=edx_train,z="genres")})
 lg<-cvlg[1,which.min(cvlg[2,])]#col 1 val  with min of second column in cvlsg
 gm<-edx_train%>%group_by(genres)%>%summarize(genremean=om+(sum(rating-om)/(n()+lg)))
 
@@ -102,7 +102,7 @@ yearslist<-as.numeric(gsub("[^0-9]","",str_extract(edx_train$title,"\\([0-9]{4}\
 trainwithyears<-mutate(edx_train, year=yearslist)
 
 #train set regularized year mean rating
-cvlsy<-sapply(seq(2,20,2),function(x){lambdas(i=x,y=trainwithyears,p=10,z="year")})
+cvlsy<-sapply(seq(2,20,2),function(x){lambdas(i=x,y=trainwithyears,z="year")})
 ly<-cvlsy[1,which.min(cvlsy[2,])]#col 1 val  with min of second column in cvlsy
 ym<-trainwithyears%>%group_by(year)%>%summarize(yearmean=om+(sum(rating-om)/(n()+ly)))
 
@@ -190,5 +190,3 @@ predictions_lmval<-predict(train_lm,prep_val)
 lmRMSEval<-RMSE(predictions_lmval,prep_val$rating)
 lmRMSEval
 
-train_gam <- train(rating ~ usermean+moviemean+genremean+yearmean+rateyearmean+ratemonthmean, method="gamboost",
-                  data = prep_train)
